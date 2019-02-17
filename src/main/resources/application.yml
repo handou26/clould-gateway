@@ -1,0 +1,49 @@
+server:
+  port: 8000
+spring :
+   application :
+      name : spring-cloud-gateway
+   zipkin:
+     base-url: http://localhost:7777    
+   cloud:
+     gateway:
+       routes:
+       -  id:  ORDERSERVICE
+          # 重点！/info必须使用http进行转发，lb代表从注册中心获取服务
+          uri: lb://ORDERSERVICE
+          predicates: #断言
+          # 重点！转发该路径！,/userapi/**,
+          - Path=/orderapi/**
+          # http://localhost:6601/userapi/user/users/2, 必须加上StripPrefix=1，否则访问服务时会带上userapi
+          # 访问地址 http://localhost:8000/orderapi/order?name=java
+          #         http://localhost:8000/orderapi/feign-order-user?name=java
+          #而不是我们期望的去掉userapi，只保留**部分
+          filters: #过滤器
+          - StripPrefix=1
+          
+       -  id:  USERSERVICE
+          uri: lb://USERSERVICE
+          predicates: #断言 输入类型是一个 ServerWebExchange。我们可以使用它来匹配来自 HTTP 请求的任何内容，例如 headers 或参数。
+          - Path=/userapi/**
+          filters: #过滤器 org.springframework.cloud.gateway.filter.GatewayFilter
+          - StripPrefix=1    
+          
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+        -   "*"        
+          
+          
+eureka:
+  client:
+    serviceUrl:
+      default-zone: http://localhost:8761/eureka/   
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.http.server.reactive: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.ipc.netty: DEBUG
